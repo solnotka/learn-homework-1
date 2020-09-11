@@ -13,8 +13,11 @@
 
 """
 import logging
+import settings
 
 from telegram.ext import Updater, CommandHandler, MessageHandler, Filters
+import ephem
+from datetime import date
 
 logging.basicConfig(format='%(name)s - %(levelname)s - %(message)s',
                     level=logging.INFO,
@@ -25,11 +28,10 @@ logging.basicConfig(format='%(name)s - %(levelname)s - %(message)s',
 PROXY = {
     'proxy_url': 'socks5://t1.learn.python.ru:1080',
     'urllib3_proxy_kwargs': {
-        'username': 'learn', 
-        'password': 'python'
+        'username': settings.PROXY_USERNAME, 
+        'password': settings.PROXY_PASSWORD
     }
 }
-
 
 def greet_user(bot, update):
     text = 'Вызван /start'
@@ -41,14 +43,35 @@ def talk_to_me(bot, update):
     user_text = update.message.text 
     print(user_text)
     update.message.reply_text(user_text)
- 
+
+def where_is_planet(bot, update):
+    user_planet = update.message.text.split()[-1].capitalize()
+    today = str(date.today())
+    zodiac = {"Aries": "Овна", "Taurus": "Тельца", "Gemini": "Близнецов",
+              "Cancer": "Рака", "Leo": "Льва", "Virgo": "Девы",
+              "Libra": "Весов", "Scorpius": "Скорпиона", "Ophiuchus": "Змееносца",
+              "Sagittarius": "Стрельца", "Capricornus": "Козерога",
+              "Aquarius": "Водолея", "Pisces": "Рыб"}
+    planets = {"Jupiter": "Юпитер", "Mars": "Марс", "Mercury": "Меркурий",
+               "Moon": "Луна", "Neptune": "Нептун", "Pluto": "Плутон",
+               "Saturn": "Сатурн", "Sun": "Солнце", "Uranus": "Уран", "Venus": "Венера"}
+    print(today, user_planet)
+
+    if user_planet in planets:
+      user_constel = ephem.constellation(eval(f'ephem.{user_planet}("{today}")'))[1]
+      print(user_constel)
+      update.message.reply_text(f'Сегодня {planets[user_planet]} находится в созвездии {zodiac[user_constel]}')
+    else:
+      update.message.reply_text("Пожалуйста, введите английское название планеты")
+    
 
 def main():
-    mybot = Updater("КЛЮЧ, КОТОРЫЙ НАМ ВЫДАЛ BotFather", request_kwargs=PROXY)
+    mybot = Updater(settings.API_KEY, request_kwargs=PROXY)
     
     dp = mybot.dispatcher
     dp.add_handler(CommandHandler("start", greet_user))
-    dp.add_handler(MessageHandler(Filters.text, talk_to_me))
+    dp.add_handler(CommandHandler("planet", where_is_planet))
+    dp.add_handler(MessageHandler(Filters.text, talk_to_me))    
     
     mybot.start_polling()
     mybot.idle()
